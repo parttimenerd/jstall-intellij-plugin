@@ -1,29 +1,55 @@
 # jstall-intellij-plugin
 
 ![Build](https://github.com/parttimenerd/jstall-intellij-plugin/workflows/Build/badge.svg)
-[![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
-
-## Template ToDo list
-- [x] Create a new [IntelliJ Platform Plugin Template][template] project.
-- [ ] Get familiar with the [template documentation][template].
-- [ ] Adjust the [pluginGroup](./gradle.properties) and [pluginName](./gradle.properties), as well as the [id](./src/main/resources/META-INF/plugin.xml) and [sources package](./src/main/kotlin).
-- [ ] Adjust the plugin description in `README` (see [Tips][docs:plugin-description])
-- [ ] Review the [Legal Agreements](https://plugins.jetbrains.com/docs/marketplace/legal-agreements.html?from=IJPluginTemplate).
-- [ ] [Publish a plugin manually](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginTemplate) for the first time.
-- [ ] Set the `MARKETPLACE_ID` in the above README badges. You can obtain it once the plugin is published to JetBrains Marketplace.
-- [ ] Set the [Plugin Signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html?from=IJPluginTemplate) related [secrets](https://github.com/JetBrains/intellij-platform-plugin-template#environment-variables).
-- [ ] Set the [Deployment Token](https://plugins.jetbrains.com/docs/marketplace/plugin-upload.html?from=IJPluginTemplate).
-- [ ] Click the <kbd>Watch</kbd> button on the top of the [IntelliJ Platform Plugin Template][template] to be notified about releases containing new features and fixes.
-- [ ] Configure the [CODECOV_TOKEN](https://docs.codecov.com/docs/quick-start) secret for automated test coverage reports on PRs
 
 <!-- Plugin description -->
-This Fancy IntelliJ Platform Plugin is going to be your implementation of the brilliant ideas that you have.
+A tiny plugin to integrate the [jstall](https://github.com/parttimenerd/jstall) CLI tool into JetBrains IDEs,
+giving you rich JVM diagnostics (thread analysis, deadlock detection, …) directly in your IDE,
+instead of just basic thread dumps.
 
-This specific section is a source for the [plugin.xml](/src/main/resources/META-INF/plugin.xml) file which will be extracted by the [Gradle](/build.gradle.kts) during the build process.
+It's the fastest way to answer the age old question "Why is my JVM process stuck?" without leaving your IDE.
+Before you had to run a profiler or capture thread dumps and analyze them manually,
+now you can get insights with a single click.
 
-To keep everything working, do not remove `<!-- ... -->` sections. 
+## Features
+
+### Run Toolbar Actions
+Available in the **Run** tool window toolbar (next to Stop, Rerun, …):
+
+- **JStall Status** — Analyze a running JVM with `jstall status` and view the output in a console tab.
+  Automatically uses the PID of the process in the current run window.
+- **JStall Record** — Record JVM diagnostics over time into a ZIP file (`<project-dir>/<pid>-<timestamp>.zip`)
+  for later analysis.
+
+Both actions fall back to a **JVM picker popup** when invoked outside a run window
+(e.g. via <kbd>Shift</kbd><kbd>Shift</kbd> → "JStall Status" / "JStall Record").
+
+### Recording File Support
+JStall recording `.zip` files get a **custom file icon** in the project view and support:
+
+- **Double-click** to automatically run `jstall status` on the recording and display the results in an editor tab.
+- **Right-click → Analyze JStall Recording** — Same analysis via the context menu.
+- **Right-click → Extract JStall Recording** — Extract the recording ZIP contents into a folder.
+
+### Settings
+Configurable under **Settings → Tools → JStall**:
+
+| Setting | Description | Default |
+|---|---|---|
+| Full diagnostics (`--full`) | Include expensive analyses | Off |
+| Sample interval | Seconds between thread dump samples | 5 |
+| Sample count | Number of samples to collect | 2 |
+
+### Progress Indicators
+All long-running operations show a **time-based progress bar** in the IDE status bar,
+estimated from the configured interval × sample count.
+
 <!-- Plugin description end -->
+
+## Usage
+
+Use <kbd>Shift</kbd><kbd>Shift</kbd> (Search Everywhere) and type **"JStall Status"**, **"JStall Record"**,
+or **"Analyze JStall Recording"** to quickly invoke actions from anywhere in the IDE.
 
 ## Installation
 
@@ -32,21 +58,17 @@ To keep everything working, do not remove `<!-- ... -->` sections.
   <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "jstall-intellij-plugin"</kbd> >
   <kbd>Install</kbd>
 
-- Using JetBrains Marketplace:
-
-  Go to [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID) and install it by clicking the <kbd>Install to ...</kbd> button in case your IDE is running.
-
-  You can also download the [latest release](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID/versions) from JetBrains Marketplace and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
-
 - Manually:
 
   Download the [latest release](https://github.com/parttimenerd/jstall-intellij-plugin/releases/latest) and install it manually using
   <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
 
+## Support, Feedback, Contributing
 
----
-Plugin based on the [IntelliJ Platform Plugin Template][template].
+This project is open to feature requests/suggestions, bug reports etc.
+via [GitHub](https://github.com/parttimenerd/jstall-intellij-plugin/issues) issues.
+Contribution and feedback are encouraged and always welcome.
 
-[template]: https://github.com/JetBrains/intellij-platform-plugin-template
-[docs:plugin-description]: https://plugins.jetbrains.com/docs/intellij/plugin-user-experience.html#plugin-description-and-presentation
+## License
+
+MIT, Copyright 2026 SAP SE or an SAP affiliate company, Johannes Bechberger and contributors

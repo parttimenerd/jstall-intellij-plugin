@@ -36,7 +36,7 @@ dependencies {
 
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {
-        intellijIdea(providers.gradleProperty("platformVersion"))
+        intellijIdeaCommunity(providers.gradleProperty("platformVersion"))
 
         // Plugin Dependencies. Uses `platformBundledPlugins` property from the gradle.properties file for bundled IntelliJ Platform plugins.
         bundledPlugins(providers.gradleProperty("platformBundledPlugins").map { it.split(',') })
@@ -49,6 +49,9 @@ dependencies {
 
         testFramework(TestFrameworkType.Platform)
     }
+
+    implementation("me.bechberger:jstall:0.5.3")
+    implementation("me.bechberger.util:femtocli:0.3.2")
 }
 
 // Configure IntelliJ Platform Gradle Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
