@@ -10,7 +10,6 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.util.text.DateFormatUtil
-import me.bechberger.jstall.settings.JStallSettings
 
 /**
  * Action available on .zip files in the project view that interprets
@@ -41,24 +40,17 @@ class JStallReplayAction : DumbAwareAction() {
                 indicator.text = "Analyzing $fileName…"
 
                 try {
-                    val settings = JStallSettings.getInstance()
-                    val args = mutableListOf("status", path)
-                    if (settings.state.fullDiagnostics) {
-                        args.add("--full")
-                    }
-
-                    val result = runJStallCaptured(*args.toTypedArray())
+                    val analysis = analyzeRecording(path)
                     val timestamp = DateFormatUtil.formatTimeWithSeconds(System.currentTimeMillis())
                     val title = "JStall Replay $fileName — $timestamp"
-                    val output = formatJStallOutput(result)
 
                     ApplicationManager.getApplication().invokeLater({
-                        showPlainConsole(project, title, output)
+                        showPlainConsole(project, title, analysis.output)
                     }, ModalityState.nonModal())
 
-                    if (result.exitCode() != 0) {
+                    if (analysis.exitCode != 0) {
                         ApplicationManager.getApplication().invokeLater({
-                            notifyError(project, "jstall replay exited with code ${result.exitCode()}")
+                            notifyError(project, "jstall replay exited with code ${analysis.exitCode}")
                         }, ModalityState.nonModal())
                     }
                 } catch (ex: Exception) {

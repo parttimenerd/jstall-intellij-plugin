@@ -32,14 +32,16 @@ class JStallExtractAction : DumbAwareAction() {
         val outputDir = Path.of(file.parent.path, fileName).toString()
 
         ProgressManager.getInstance().run(object : Task.Backgroundable(
-            project, "Extracting JStall Recording $fileName", false
+            project, "Extracting JStall Recording $fileName", true
         ) {
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = true
                 indicator.text = "Extracting ${file.name}…"
 
+                if (indicator.isCanceled) return
                 try {
                     val result = runJStallCaptured("record", "extract", zipPath, outputDir)
+                    if (indicator.isCanceled) return
                     val output = formatJStallOutput(result)
 
                     if (result.exitCode() == 0) {

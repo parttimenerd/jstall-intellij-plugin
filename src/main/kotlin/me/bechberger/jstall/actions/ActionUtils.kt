@@ -17,19 +17,13 @@ import me.bechberger.jstall.Main
 import me.bechberger.jstall.provider.ReplayProvider
 import me.bechberger.jstall.settings.JStallSettings
 import me.bechberger.jstall.util.JVMDiscovery
+import java.awt.BorderLayout
 import java.io.File
+import java.util.Collections
+import java.util.LinkedHashMap
 import javax.swing.JComponent
 
-private const val MAX_LABEL_LENGTH = 40
-
-/** Format a JVM process entry for the picker popup, showing only the simple class name. */
-internal fun formatJvmLabel(jvm: JVMDiscovery.JVMProcess): String {
-    val mainClass = jvm.mainClass()
-    val simple = mainClass.substringAfterLast('.')
-        .ifBlank { mainClass }
-        .let { if (it.length > MAX_LABEL_LENGTH) it.substring(0, MAX_LABEL_LENGTH - 1) + "…" else it }
-    return "${jvm.pid()} — $simple"
-}
+internal const val MAX_DISPLAY_LENGTH = 100
 
 private val ANSI_PATTERN = Regex("\u001B\\[[;\\d]*m")
 
@@ -60,11 +54,11 @@ internal fun formatJStallOutput(result: RunResult): String {
 
 /**
  * The estimated total duration of a jstall command in milliseconds,
- * based on interval * sample count from settings, we add a one second buffer to account for startup and analysis time.
+ * based on interval from settings, plus a two-second buffer to account for startup and analysis time.
  */
 internal fun estimatedDurationMs(): Long {
-    val settings = JStallSettings.getInstance()
-    return settings.state.recordIntervalSeconds.toLong() * settings.state.recordSampleCount * 1000 + 1000
+    val state = JStallSettings.getInstance().state.copy()
+    return state.recordIntervalSeconds.toLong() * 1000 + 2000
 }
 
 /**
@@ -78,8 +72,8 @@ internal fun showPlainConsole(project: Project, title: String, text: String) {
 
     val descriptor = RunContentDescriptor(console, null, object : JComponent() {
         init {
-            layout = java.awt.BorderLayout()
-            add(console.component, java.awt.BorderLayout.CENTER)
+            layout = BorderLayout()
+            add(console.component, BorderLayout.CENTER)
         }
     }, title)
 
@@ -91,18 +85,57 @@ internal fun showPlainConsole(project: Project, title: String, text: String) {
 
 private val LOG = Logger.getInstance("JStall")
 
+private data class RecordingCacheEntry(val isRecording: Boolean, val timestamp: Long)
+private const val RECORDING_CACHE_MAX_SIZE = 200
+private const val RECORDING_CACHE_TTL_MS = 5000L
+private val recordingCache: MutableMap<String, RecordingCacheEntry> =
+    Collections.synchronizedMap(object : LinkedHashMap<String, RecordingCacheEntry>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, RecordingCacheEntry>?): Boolean =
+            size > RECORDING_CACHE_MAX_SIZE
+    })
+
 /**
  * Checks if the zip file at [path] is a valid jstall recording
  * by verifying it contains recorded JVMs via [ReplayProvider].
+ * Results are cached for [RECORDING_CACHE_TTL_MS] ms to avoid repeated I/O.
  */
 internal fun isJStallRecording(path: String): Boolean {
-    return try {
+    val now = System.currentTimeMillis()
+    recordingCache[path]?.let { entry ->
+        if (now - entry.timestamp < RECORDING_CACHE_TTL_MS) return entry.isRecording
+    }
+    val result = try {
         val file = File(path)
-        if (!file.exists() || !file.isFile) return false
-        ReplayProvider(file.toPath()).listRecordedJvms(null).isNotEmpty()
-    } catch (_: Exception) {
+        if (!file.exists() || !file.isFile) false
+        else ReplayProvider(file.toPath()).listRecordedJvms(null).isNotEmpty()
+    } catch (ex: Exception) {
         false
     }
+    recordingCache[path] = RecordingCacheEntry(result, now)
+    return result
+}
+
+/**
+ * Result of analyzing a jstall recording.
+ */
+internal data class RecordingAnalysisResult(
+    val output: String,
+    val exitCode: Int
+)
+
+/**
+ * Runs `jstall status <path>` on a recording file and returns the formatted output.
+ * Respects the [JStallSettings.State.fullDiagnostics] setting.
+ * Must be called on a background thread.
+ */
+internal fun analyzeRecording(path: String): RecordingAnalysisResult {
+    val state = JStallSettings.getInstance().state.copy()
+    val args = mutableListOf("status", path)
+    if (state.fullDiagnostics) {
+        args.add("--full")
+    }
+    val result = runJStallCaptured(*args.toTypedArray())
+    return RecordingAnalysisResult(formatJStallOutput(result), result.exitCode())
 }
 
 /**
@@ -121,8 +154,8 @@ internal fun notifyInfo(project: Project, message: String) {
             .getNotificationGroup("JStall Notifications")
             .createNotification(message, NotificationType.INFORMATION)
             .notify(project)
-    } catch (_: Exception) {
-        LOG.info("JStall: $message")
+    } catch (ex: Exception) {
+        LOG.info("JStall: $message", ex)
     }
 }
 
@@ -132,7 +165,7 @@ internal fun notifyError(project: Project, message: String) {
             .getNotificationGroup("JStall Notifications")
             .createNotification(message, NotificationType.ERROR)
             .notify(project)
-    } catch (_: Exception) {
-        LOG.error("JStall: $message")
+    } catch (ex: Exception) {
+        LOG.error("JStall: $message", ex)
     }
 }

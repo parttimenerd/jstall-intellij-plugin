@@ -1,7 +1,6 @@
 package me.bechberger.jstall.actions
 
 import com.intellij.execution.process.BaseProcessHandler
-import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.LangDataKeys
@@ -17,14 +16,18 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.text.DateFormatUtil
 import me.bechberger.femtocli.RunResult
 import me.bechberger.jstall.settings.JStallSettings
 import me.bechberger.jstall.util.JVMDiscovery
 import java.nio.file.Path
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * Base class for JStall actions that target a running JVM process.
@@ -36,31 +39,40 @@ import java.util.concurrent.ExecutorService
  */
 abstract class AbstractJvmAction : DumbAwareAction() {
 
-    protected val executor: ExecutorService =
-        AppExecutorUtil.createBoundedApplicationPoolExecutor(javaClass.simpleName, 1)
+    /** Single-threaded executor for running CLI commands. Uses the shared app pool to avoid leaking threads. */
+    protected val executor = AppExecutorUtil.getAppExecutorService()
 
-    /** Holds the output file path computed during the last [buildArgs] call. */
-    protected var currentOutputFile: Path? = null
+    /**
+     * Holds the CLI arguments and optional output file path for one invocation.
+     */
+    protected data class ActionArgs(
+        val args: List<String>,
+        val outputFile: Path? = null
+    )
 
     /**
      * Computes a timestamped output zip path inside the project base dir (or home dir).
-     * Also stores it in [currentOutputFile].
+     *
+     * Note: the timestamp reflects when [buildArgs] executes on the background thread,
+     * not the moment the user triggers the action.
      */
     protected fun buildOutputPath(project: Project, pid: Long): Path {
         val baseDir = project.basePath ?: System.getProperty("user.home")
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
-        return Path.of(baseDir, "$pid-$timestamp.zip").also { currentOutputFile = it }
+        return Path.of(baseDir, "$pid-$timestamp.zip")
     }
 
     /**
-     * Common CLI tail args shared by all actions: --interval, --count, and optionally --full.
+     * Common CLI tail args shared by all actions: --interval and optionally --full.
+     *
+     * Settings are captured at call time (inside [buildArgs]), so they are frozen before
+     * the command starts and won't reflect changes made while the progress bar is visible.
      */
     protected fun commonArgs(): List<String> {
-        val settings = JStallSettings.getInstance()
+        val state = JStallSettings.getInstance().state.copy()
         return buildList {
-            add("--interval"); add(settings.recordInterval)
-            add("--dumps"); add(settings.state.recordSampleCount.toString())
-            if (settings.state.fullDiagnostics) add("--full")
+            add("--interval"); add("${state.recordIntervalSeconds}s")
+            if (state.fullDiagnostics) add("--full")
         }
     }
 
@@ -70,17 +82,23 @@ abstract class AbstractJvmAction : DumbAwareAction() {
     /** Title prefix shown in the progress bar, e.g. "JStall Status". */
     protected abstract val progressTitlePrefix: String
 
+    /** Human-readable description shown in the progress bar, e.g. "Capturing flame graph". */
+    protected abstract val progressDescription: String
+
     /**
      * Build the CLI args for this action. Called on a background thread.
+     * Return an [ActionArgs] containing the argument list and an optional output file path.
      */
-    protected abstract fun buildArgs(project: Project, pid: Long): List<String>
+    protected abstract fun buildArgs(project: Project, pid: Long): ActionArgs
 
     /**
      * Called after the command completes successfully on a background thread.
      * Default implementation shows output in a plain console and reports non-zero exit codes.
      * Override to add extra behaviour (e.g. notifications).
+     *
+     * @param outputFile the output file path from [ActionArgs], if any.
      */
-    protected open fun onResult(project: Project, pid: Long, result: RunResult) {
+    protected open fun onResult(project: Project, pid: Long, result: RunResult, outputFile: Path?) {
         val output = formatJStallOutput(result)
         val title = buildResultTitle(pid)
 
@@ -96,7 +114,7 @@ abstract class AbstractJvmAction : DumbAwareAction() {
     }
 
     protected fun buildResultTitle(pid: Long): String {
-        val timestamp = com.intellij.util.text.DateFormatUtil.formatTimeWithSeconds(System.currentTimeMillis())
+        val timestamp = DateFormatUtil.formatTimeWithSeconds(System.currentTimeMillis())
         return "$progressTitlePrefix $pid — $timestamp"
     }
 
@@ -122,7 +140,7 @@ abstract class AbstractJvmAction : DumbAwareAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        val descriptor: RunContentDescriptor? = e.getData(LangDataKeys.RUN_CONTENT_DESCRIPTOR)
+        val descriptor = e.getData(LangDataKeys.RUN_CONTENT_DESCRIPTOR)
         val handler = descriptor?.processHandler
 
         if (handler is BaseProcessHandler<*> && !handler.isProcessTerminated) {
@@ -135,7 +153,7 @@ abstract class AbstractJvmAction : DumbAwareAction() {
     // ── JVM picker ──
 
     private fun showJvmPicker(project: Project) {
-        executor.execute {
+        AppExecutorUtil.getAppExecutorService().execute {
             try {
                 val jvms = JVMDiscovery.listJVMs()
                 if (jvms.isEmpty()) {
@@ -154,16 +172,22 @@ abstract class AbstractJvmAction : DumbAwareAction() {
                             hasFocus: Boolean
                         ) {
                             val fqcn = value.mainClass()
+                            val displayClass = fqcn.let {
+                                if (it.length > MAX_DISPLAY_LENGTH) it.substring(0, MAX_DISPLAY_LENGTH - 1) + "…" else it
+                            }
                             append(value.pid().toString(), SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES)
                             appendTextPadding(60)
-                            append(fqcn.substring(0, fqcn.length.coerceAtMost(100)), SimpleTextAttributes.REGULAR_ATTRIBUTES)
+                            append(displayClass, SimpleTextAttributes.REGULAR_ATTRIBUTES)
                         }
                     }
                     JBPopupFactory.getInstance()
                         .createPopupChooserBuilder(jvms)
                         .setTitle(pickerTitle)
                         .setRenderer(renderer)
-                        .setNamerForFiltering { formatJvmLabel(it) }
+                        .setNamerForFiltering { jvm ->
+                            // Include both PID and full class name so users can filter by either
+                            "${jvm.pid()} ${jvm.mainClass()}"
+                        }
                         .setItemChosenCallback { selectedValue: JVMDiscovery.JVMProcess ->
                             runWithProgress(project, selectedValue.pid())
                         }
@@ -185,29 +209,44 @@ abstract class AbstractJvmAction : DumbAwareAction() {
         val estimatedTotalMs = estimatedDurationMs()
 
         ProgressManager.getInstance().run(object : Task.Backgroundable(
-            project, "$progressTitlePrefix PID $pid", false
+            project, "JStall: $progressDescription (PID $pid)", true
         ) {
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = false
                 indicator.fraction = 0.0
-                indicator.text = "$progressTitlePrefix PID $pid…"
+                indicator.text = "JStall: $progressDescription (PID $pid)"
                 indicator.text2 = "0%"
 
                 val startTime = System.currentTimeMillis()
-                val args = buildArgs(project, pid)
+                val actionArgs = buildArgs(project, pid)
 
                 val futureResult: CompletableFuture<RunResult> = CompletableFuture.supplyAsync({
-                    runJStallCaptured(*args.toTypedArray())
+                    runJStallCaptured(*actionArgs.args.toTypedArray())
                 }, executor)
 
                 while (!futureResult.isDone) {
+                    if (indicator.isCanceled) {
+                        futureResult.cancel(true)
+                        return
+                    }
                     val elapsed = System.currentTimeMillis() - startTime
                     val fraction = if (estimatedTotalMs > 0) {
                         (elapsed.toDouble() / estimatedTotalMs).coerceAtMost(0.99)
                     } else 0.0
                     indicator.fraction = fraction
                     indicator.text2 = "${(fraction * 100).toInt()}%"
-                    try { Thread.sleep(250) } catch (_: InterruptedException) { break }
+                    try {
+                        futureResult.get(250, TimeUnit.MILLISECONDS)
+                    } catch (_: TimeoutException) {
+                        // expected — keep polling for progress updates
+                    } catch (_: InterruptedException) {
+                        futureResult.cancel(true)
+                        return
+                    } catch (_: CancellationException) {
+                        return
+                    } catch (_: ExecutionException) {
+                        break // will be handled below
+                    }
                 }
 
                 indicator.fraction = 1.0
@@ -224,7 +263,7 @@ abstract class AbstractJvmAction : DumbAwareAction() {
                     return
                 }
 
-                onResult(project, pid, result)
+                onResult(project, pid, result, actionArgs.outputFile)
             }
         })
     }

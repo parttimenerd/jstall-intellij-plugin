@@ -22,10 +22,12 @@ class JStallConfigurable : BoundConfigurable("JStall") {
                 spinner(1..300, 1)
                     .bindIntValue(settings.state::recordIntervalSeconds)
             }
-            /*row("Sample count:") {
-                spinner(1..100, 1)
-                    .bindIntValue(settings.state::recordSampleCount)
-            }*/
+        }
+        group("Flame Settings") {
+            row("Profiling duration (seconds):") {
+                spinner(1..300, 1)
+                    .bindIntValue(settings.state::flameDurationSeconds)
+            }
         }
     }
 }

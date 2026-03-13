@@ -12,9 +12,7 @@ import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.util.concurrency.AppExecutorUtil
-import me.bechberger.jstall.actions.formatJStallOutput
-import me.bechberger.jstall.actions.runJStallCaptured
-import me.bechberger.jstall.settings.JStallSettings
+import me.bechberger.jstall.actions.analyzeRecording
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -39,22 +37,15 @@ class JStallRecordingEditor(
         // Run analysis in the background
         AppExecutorUtil.getAppExecutorService().execute {
             try {
-                val settings = JStallSettings.getInstance()
                 val localPath = VfsUtilCore.virtualToIoFile(file).absolutePath
-                val args = mutableListOf("status", localPath)
-                if (settings.state.fullDiagnostics) {
-                    args.add("--full")
-                }
-
-                val result = runJStallCaptured(*args.toTypedArray())
-                val output = formatJStallOutput(result)
+                val analysis = analyzeRecording(localPath)
 
                 ApplicationManager.getApplication().invokeLater({
                     console.clear()
-                    console.print(output, ConsoleViewContentType.NORMAL_OUTPUT)
-                    if (result.exitCode() != 0) {
+                    console.print(analysis.output, ConsoleViewContentType.NORMAL_OUTPUT)
+                    if (analysis.exitCode != 0) {
                         console.print(
-                            "\n\nProcess exited with code ${result.exitCode()}",
+                            "\n\nProcess exited with code ${analysis.exitCode}",
                             ConsoleViewContentType.ERROR_OUTPUT
                         )
                     }

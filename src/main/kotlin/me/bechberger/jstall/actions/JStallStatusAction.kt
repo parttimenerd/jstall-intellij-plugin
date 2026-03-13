@@ -12,11 +12,12 @@ class JStallStatusAction : AbstractJvmAction() {
 
     override val pickerTitle = "Select JVM Process"
     override val progressTitlePrefix = "JStall Status"
+    override val progressDescription = "Analyzing current process status"
 
-    override fun buildArgs(project: Project, pid: Long): List<String> {
-        return buildList {
+    override fun buildArgs(project: Project, pid: Long): ActionArgs {
+        return ActionArgs(buildList {
             add("status"); add(pid.toString())
             addAll(commonArgs())
-        }
+        })
     }
 }

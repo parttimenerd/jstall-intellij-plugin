@@ -5,6 +5,7 @@ import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
+import com.intellij.util.xmlb.XmlSerializerUtil
 
 @Service(Service.Level.APP)
 @State(name = "JStallSettings", storages = [Storage("jstall.xml")])
@@ -13,10 +14,10 @@ class JStallSettings : PersistentStateComponent<JStallSettings.State> {
     data class State(
         /** Record interval in seconds */
         var recordIntervalSeconds: Int = 5,
-        /** Number of samples for interval-based data */
-        var recordSampleCount: Int = 2,
         /** Include expensive diagnostics (--full) */
         var fullDiagnostics: Boolean = false,
+        /** Flame graph profiling duration in seconds */
+        var flameDurationSeconds: Int = 10,
     )
 
     private var myState = State()
@@ -24,11 +25,8 @@ class JStallSettings : PersistentStateComponent<JStallSettings.State> {
     override fun getState(): State = myState
 
     override fun loadState(state: State) {
-        myState = state
+        XmlSerializerUtil.copyBean(state, myState)
     }
-
-    val recordInterval: String
-        get() = "${myState.recordIntervalSeconds}s"
 
     companion object {
         fun getInstance(): JStallSettings =

@@ -1,5 +1,6 @@
 package me.bechberger.jstall.actions
 
+import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -9,6 +10,7 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.fileChooser.FileSaverDescriptor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.wm.ToolWindow
@@ -16,8 +18,14 @@ import com.intellij.openapi.wm.ToolWindowAnchor
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.jcef.JBCefBrowser
 import me.bechberger.femtocli.RunResult
-import java.io.File
+import me.bechberger.jstall.settings.JStallSettings
+import org.cef.browser.CefBrowser
+import org.cef.browser.CefFrame
+import org.cef.handler.CefLifeSpanHandlerAdapter
+import org.cef.handler.CefRequestHandlerAdapter
+import org.cef.network.CefRequest
 import java.nio.file.Files
+import java.nio.file.Path
 import javax.swing.JComponent
 
 /** Key used to stash the raw HTML on a tool-window Content tab. */
@@ -33,9 +41,7 @@ class JStallFlameAction : AbstractJvmAction() {
 
     override val pickerTitle = "Select JVM Process for Flamegraph"
     override val progressTitlePrefix = "JStall Flame"
-
-    /** Temp file that will receive the generated HTML. Replaced on every run. */
-    private var outputHtmlFile: File? = null
+    override val progressDescription = "Capturing flame graph"
 
     override fun update(e: AnActionEvent) {
         // Disable entirely on Windows
@@ -46,21 +52,22 @@ class JStallFlameAction : AbstractJvmAction() {
         super.update(e)
     }
 
-    override fun buildArgs(project: Project, pid: Long): List<String> {
-        val tmpFile = Files.createTempFile("jstall-flame-$pid-", ".html").toFile()
-        outputHtmlFile = tmpFile
-        return buildList {
+    override fun buildArgs(project: Project, pid: Long): ActionArgs {
+        val tmpFile = Files.createTempFile("jstall-flame-$pid-", ".html")
+        val state = JStallSettings.getInstance().state.copy()
+        return ActionArgs(buildList {
             add("flame")
             add(pid.toString())
-            add("--output"); add(tmpFile.absolutePath)
-            add("--duration"); add("10s")
-        }
+            add("--output"); add(tmpFile.toFile().absolutePath)
+            add("--duration"); add("${state.flameDurationSeconds}s")
+        }, tmpFile)
     }
 
-    override fun onResult(project: Project, pid: Long, result: RunResult) {
-        val htmlFile = outputHtmlFile
+    override fun onResult(project: Project, pid: Long, result: RunResult, outputFile: Path?) {
+        val htmlFile = outputFile?.toFile()
 
         if (result.exitCode() != 0 || htmlFile == null || !htmlFile.exists()) {
+            htmlFile?.delete()
             val errorText = buildString {
                 append("jstall flame failed (exit ${result.exitCode()})\n\n")
                 append(formatJStallOutput(result))
@@ -73,6 +80,8 @@ class JStallFlameAction : AbstractJvmAction() {
         }
 
         val htmlContent = htmlFile.readText()
+        // Clean up temp file after reading
+        htmlFile.delete()
 
         ApplicationManager.getApplication().invokeLater({
             showFlameWindow(project, buildResultTitle(pid), htmlContent)
@@ -83,25 +92,56 @@ class JStallFlameAction : AbstractJvmAction() {
         val toolWindowManager = ToolWindowManager.getInstance(project)
         val toolWindowId = "JStall Flamegraph"
 
-        var toolWindow = toolWindowManager.getToolWindow(toolWindowId)
-        if (toolWindow == null) {
-            toolWindow = toolWindowManager.registerToolWindow(toolWindowId) {
+        val toolWindow = toolWindowManager.getToolWindow(toolWindowId)
+            ?: toolWindowManager.registerToolWindow(toolWindowId) {
                 anchor = ToolWindowAnchor.BOTTOM
                 canCloseContent = true
-            }
-            installGearAction(toolWindow!!, project)
-        }
+            }.also { installGearAction(it, project) }
 
         val browser = JBCefBrowser()
+
+        // Open external links (http/https) in the system browser instead of navigating
+        // away from the flamegraph inside the embedded JCEF panel.
+        val client = browser.jbCefClient
+
+        // Intercept target="_blank" popups
+        client.addLifeSpanHandler(object : CefLifeSpanHandlerAdapter() {
+            override fun onBeforePopup(
+                cefBrowser: CefBrowser?, frame: CefFrame?, targetUrl: String?,
+                targetFrameName: String?
+            ): Boolean {
+                if (targetUrl != null && (targetUrl.startsWith("http://") || targetUrl.startsWith("https://"))) {
+                    BrowserUtil.browse(targetUrl)
+                }
+                return true // cancel the popup in all cases
+            }
+        }, browser.cefBrowser)
+
+        // Intercept same-window navigation to external URLs
+        client.addRequestHandler(object : CefRequestHandlerAdapter() {
+            override fun onBeforeBrowse(
+                cefBrowser: CefBrowser?, frame: CefFrame?, request: CefRequest?,
+                userGesture: Boolean, isRedirect: Boolean
+            ): Boolean {
+                val url = request?.url ?: return false
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    BrowserUtil.browse(url)
+                    return true // cancel navigation inside the embedded browser
+                }
+                return false // allow data: / about:blank / internal navigation
+            }
+        }, browser.cefBrowser)
+
         browser.loadHTML(htmlContent)
 
         val browserComponent: JComponent = browser.component
 
-        val contentManager = toolWindow!!.contentManager
+        val contentManager = toolWindow.contentManager
         val content = contentManager.factory.createContent(browserComponent, title, false).also {
             it.isCloseable = true
             it.putUserData(HTML_KEY, htmlContent)
         }
+        Disposer.register(content, browser)
         contentManager.addContent(content)
         contentManager.setSelectedContent(content)
         toolWindow.show()
@@ -134,7 +174,6 @@ class JStallFlameAction : AbstractJvmAction() {
                     ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
                 val wrapper = saveDialog.save(baseDir, "$suggestedName.html") ?: return
                 try {
-                    wrapper.getVirtualFile(true)
                     wrapper.file.writeText(html)
                     notifyInfo(project, "Flamegraph saved to ${wrapper.file.absolutePath}")
                 } catch (ex: Exception) {
