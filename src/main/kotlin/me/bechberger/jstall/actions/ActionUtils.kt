@@ -20,17 +20,15 @@ import me.bechberger.jstall.util.JVMDiscovery
 import java.io.File
 import javax.swing.JComponent
 
-private const val MAX_LABEL_LENGTH = 50
+private const val MAX_LABEL_LENGTH = 40
 
-/** Format a JVM process entry for the picker popup, capping the main class to [MAX_LABEL_LENGTH] chars. */
+/** Format a JVM process entry for the picker popup, showing only the simple class name. */
 internal fun formatJvmLabel(jvm: JVMDiscovery.JVMProcess): String {
     val mainClass = jvm.mainClass()
-    val truncated = if (mainClass.length > MAX_LABEL_LENGTH) {
-        mainClass.substring(0, MAX_LABEL_LENGTH - 1) + "…"
-    } else {
-        mainClass
-    }
-    return "${jvm.pid()} — $truncated"
+    val simple = mainClass.substringAfterLast('.')
+        .ifBlank { mainClass }
+        .let { if (it.length > MAX_LABEL_LENGTH) it.substring(0, MAX_LABEL_LENGTH - 1) + "…" else it }
+    return "${jvm.pid()} — $simple"
 }
 
 private val ANSI_PATTERN = Regex("\u001B\\[[;\\d]*m")
@@ -62,11 +60,11 @@ internal fun formatJStallOutput(result: RunResult): String {
 
 /**
  * The estimated total duration of a jstall command in milliseconds,
- * based on interval * sample count from settings.
+ * based on interval * sample count from settings, we add a one second buffer to account for startup and analysis time.
  */
 internal fun estimatedDurationMs(): Long {
     val settings = JStallSettings.getInstance()
-    return settings.state.recordIntervalSeconds.toLong() * settings.state.recordSampleCount * 1000
+    return settings.state.recordIntervalSeconds.toLong() * settings.state.recordSampleCount * 1000 + 1000
 }
 
 /**

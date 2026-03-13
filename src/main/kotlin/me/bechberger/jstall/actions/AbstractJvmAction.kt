@@ -14,11 +14,15 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.openapi.ui.popup.PopupStep
-import com.intellij.openapi.ui.popup.util.BaseListPopupStep
+import com.intellij.ui.ColoredListCellRenderer
+import com.intellij.ui.SimpleTextAttributes
 import com.intellij.util.concurrency.AppExecutorUtil
 import me.bechberger.femtocli.RunResult
+import me.bechberger.jstall.settings.JStallSettings
 import me.bechberger.jstall.util.JVMDiscovery
+import java.nio.file.Path
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 
@@ -34,6 +38,31 @@ abstract class AbstractJvmAction : DumbAwareAction() {
 
     protected val executor: ExecutorService =
         AppExecutorUtil.createBoundedApplicationPoolExecutor(javaClass.simpleName, 1)
+
+    /** Holds the output file path computed during the last [buildArgs] call. */
+    protected var currentOutputFile: Path? = null
+
+    /**
+     * Computes a timestamped output zip path inside the project base dir (or home dir).
+     * Also stores it in [currentOutputFile].
+     */
+    protected fun buildOutputPath(project: Project, pid: Long): Path {
+        val baseDir = project.basePath ?: System.getProperty("user.home")
+        val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
+        return Path.of(baseDir, "$pid-$timestamp.zip").also { currentOutputFile = it }
+    }
+
+    /**
+     * Common CLI tail args shared by all actions: --interval, --count, and optionally --full.
+     */
+    protected fun commonArgs(): List<String> {
+        val settings = JStallSettings.getInstance()
+        return buildList {
+            add("--interval"); add(settings.recordInterval)
+            add("--dumps"); add(settings.state.recordSampleCount.toString())
+            if (settings.state.fullDiagnostics) add("--full")
+        }
+    }
 
     /** Title shown in the JVM picker popup. */
     protected abstract val pickerTitle: String
@@ -116,14 +145,30 @@ abstract class AbstractJvmAction : DumbAwareAction() {
                     return@execute
                 }
                 ApplicationManager.getApplication().invokeLater({
-                    val step = object : BaseListPopupStep<JVMDiscovery.JVMProcess>(pickerTitle, jvms) {
-                        override fun getTextFor(value: JVMDiscovery.JVMProcess) = formatJvmLabel(value)
-                        override fun onChosen(selectedValue: JVMDiscovery.JVMProcess, finalChoice: Boolean): PopupStep<*>? {
-                            if (finalChoice) runWithProgress(project, selectedValue.pid())
-                            return PopupStep.FINAL_CHOICE
+                    val renderer = object : ColoredListCellRenderer<JVMDiscovery.JVMProcess>() {
+                        override fun customizeCellRenderer(
+                            list: javax.swing.JList<out JVMDiscovery.JVMProcess>,
+                            value: JVMDiscovery.JVMProcess,
+                            index: Int,
+                            selected: Boolean,
+                            hasFocus: Boolean
+                        ) {
+                            val fqcn = value.mainClass()
+                            append(value.pid().toString(), SimpleTextAttributes.GRAYED_BOLD_ATTRIBUTES)
+                            appendTextPadding(60)
+                            append(fqcn.substring(0, fqcn.length.coerceAtMost(100)), SimpleTextAttributes.REGULAR_ATTRIBUTES)
                         }
                     }
-                    JBPopupFactory.getInstance().createListPopup(step).showCenteredInCurrentWindow(project)
+                    JBPopupFactory.getInstance()
+                        .createPopupChooserBuilder(jvms)
+                        .setTitle(pickerTitle)
+                        .setRenderer(renderer)
+                        .setNamerForFiltering { formatJvmLabel(it) }
+                        .setItemChosenCallback { selectedValue: JVMDiscovery.JVMProcess ->
+                            runWithProgress(project, selectedValue.pid())
+                        }
+                        .createPopup()
+                        .showCenteredInCurrentWindow(project)
                 }, ModalityState.nonModal())
             } catch (ex: Exception) {
                 thisLogger().warn("Failed to list JVMs", ex)

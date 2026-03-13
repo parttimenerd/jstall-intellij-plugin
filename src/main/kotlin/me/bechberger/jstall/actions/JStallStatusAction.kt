@@ -1,7 +1,6 @@
 package me.bechberger.jstall.actions
 
 import com.intellij.openapi.project.Project
-import me.bechberger.jstall.settings.JStallSettings
 
 /**
  * Action that runs `jstall status <pid>` and displays the output in a console tab.
@@ -15,13 +14,9 @@ class JStallStatusAction : AbstractJvmAction() {
     override val progressTitlePrefix = "JStall Status"
 
     override fun buildArgs(project: Project, pid: Long): List<String> {
-        val settings = JStallSettings.getInstance()
         return buildList {
-            add("status")
-            add(pid.toString())
-            add("--interval")
-            add(settings.recordInterval)
-            if (settings.state.fullDiagnostics) add("--full")
+            add("status"); add(pid.toString())
+            addAll(commonArgs())
         }
     }
 }

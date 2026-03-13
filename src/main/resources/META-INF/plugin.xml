@@ -37,6 +37,7 @@
                 description="Record JVM diagnostics into a ZIP file for later analysis"
                 icon="/icons/jstallRecord.svg">
             <add-to-group group-id="RunTab.TopToolbar" anchor="last" />
+            <add-to-group group-id="RunToolbarProcessMainActionGroup" anchor="last"/>
         </action>
         <action id="JStall.Replay"
                 class="me.bechberger.jstall.actions.JStallReplayAction"
