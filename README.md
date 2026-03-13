@@ -1,6 +1,8 @@
 # JStall IntelliJ Plugin
 
 ![Build](https://github.com/parttimenerd/jstall-intellij-plugin/workflows/Build/badge.svg)
+[![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/30667-jstall.svg)](https://plugins.jetbrains.com/plugin/30667-jstall)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/30667-jstall.svg)](https://plugins.jetbrains.com/plugin/30667-jstall)
 
 <!-- Plugin description -->
 A tiny plugin to integrate the [jstall](https://github.com/parttimenerd/jstall) CLI tool into [IntelliJ](https://www.jetbrains.com/idea/),
