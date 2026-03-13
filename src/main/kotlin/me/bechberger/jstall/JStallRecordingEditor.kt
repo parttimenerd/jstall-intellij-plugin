@@ -25,7 +25,7 @@ import java.awt.BorderLayout
  * result in an embedded console view. Automatically starts analysis when opened.
  */
 class JStallRecordingEditor(
-    private val project: Project,
+    project: Project,
     private val file: VirtualFile
 ) : UserDataHolderBase(), FileEditor {
 

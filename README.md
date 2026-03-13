@@ -4,52 +4,79 @@
 
 <!-- Plugin description -->
 A tiny plugin to integrate the [jstall](https://github.com/parttimenerd/jstall) CLI tool into JetBrains IDEs,
-giving you rich JVM diagnostics (thread analysis, deadlock detection, …) directly in your IDE,
+giving you JVM diagnostics (thread analysis, deadlock detection, flame graphs, …) directly in your IDE,
 instead of just basic thread dumps.
 
-It's the fastest way to answer the age old question "Why is my JVM process stuck?" without leaving your IDE.
-Before you had to run a profiler or capture thread dumps and analyze them manually,
-now you can get insights with a single click.
+JStall is aimed at the moment when a JVM looks suspicious, stuck, or just slower than expected, and you want better diagnostics without switching to external tools.
 
-## Features
+The plugin supports:
 
-### Run Toolbar Actions
+- running JStall commands (`status`, `record`, `flame`) on a running JVM directly from the IDE, with automatic PID detection when invoked from a Run window
+- displaying flame graphs in an interactive embedded viewer (not supported on Windows)
+- extracting and analyzing JStall recording ZIP files directly in the IDE with a double-click or context menu actions
+
+Simple, yet power powerful.
+
+<!-- Plugin description end -->
+
+## Run Toolbar Actions
 Available in the **Run** tool window toolbar (next to Stop, Rerun, …):
+
+<!-- TODO: screenshot of run toolbar with JStall buttons -->
+> 📸 *Screenshot: run toolbar buttons — coming soon*
 
 - **JStall Status** — Analyze a running JVM with `jstall status` and view the output in a console tab.
   Automatically uses the PID of the process in the current run window.
 - **JStall Record** — Record JVM diagnostics over time into a ZIP file (`<project-dir>/<pid>-<timestamp>.zip`)
   for later analysis.
+- **JStall Flame** — Generate a CPU [flamegraph](https://www.brendangregg.com/flamegraphs.html) for a running JVM
+  and display it in an interactive HTML viewer inside the IDE (not supported on Windows).
 
-Both actions fall back to a **JVM picker popup** when invoked outside a run window
-(e.g. via <kbd>Shift</kbd><kbd>Shift</kbd> → "JStall Status" / "JStall Record").
+All actions fall back to a **JVM picker popup** when invoked outside a run window
+(e.g. via <kbd>Shift</kbd><kbd>Shift</kbd> → "JStall Status" / "JStall Record" / "JStall Flame").
 
-### Recording File Support
+<!-- TODO: screenshot of JVM picker popup -->
+> 📸 *Screenshot: JVM picker popup — coming soon*
+
+## Flamegraph Viewer
+The **JStall Flame** action opens an embedded browser in a dedicated **JStall Flamegraph** tool window.
+Each flamegraph gets its own tab.
+
+<!-- TODO: screenshot of flamegraph viewer tool window -->
+> 📸 *Screenshot: flamegraph viewer — coming soon*
+
+- **Save Flamegraph** — Use the ⚙️ gear menu (the dropdown next to the tool window name) to save the currently
+  selected flamegraph as a standalone HTML file.
+
+<!-- TODO: screenshot of gear menu with "Save Flamegraph…" option -->
+> 📸 *Screenshot: gear menu with Save Flamegraph — coming soon*
+
+## Recording File Support
 JStall recording `.zip` files get a **custom file icon** in the project view and support:
+
+<!-- TODO: screenshot of recording file with custom icon in project view -->
+> 📸 *Screenshot: recording file icon — coming soon*
 
 - **Double-click** to automatically run `jstall status` on the recording and display the results in an editor tab.
 - **Right-click → Analyze JStall Recording** — Same analysis via the context menu.
 - **Right-click → Extract JStall Recording** — Extract the recording ZIP contents into a folder.
 
-### Settings
+## Settings
 Configurable under **Settings → Tools → JStall**:
 
-| Setting | Description | Default |
-|---|---|---|
-| Full diagnostics (`--full`) | Include expensive analyses | Off |
-| Sample interval | Seconds between thread dump samples | 5 |
-| Sample count | Number of samples to collect | 2 |
-
-### Progress Indicators
-All long-running operations show a **time-based progress bar** in the IDE status bar,
-estimated from the configured interval × sample count.
-
-<!-- Plugin description end -->
+| Setting                     | Description                         | Default |
+|-----------------------------|-------------------------------------|---------|
+| Full diagnostics (`--full`) | Include expensive analyses          | Off     |
+| Sample interval             | Seconds between thread dump samples | 5       |
+| Sample count                | Number of samples to collect        | 2       |
 
 ## Usage
 
-Use <kbd>Shift</kbd><kbd>Shift</kbd> (Search Everywhere) and type **"JStall Status"**, **"JStall Record"**,
-or **"Analyze JStall Recording"** to quickly invoke actions from anywhere in the IDE.
+- **From a Run window** — Click the JStall buttons in the Run tool window toolbar to target the running process directly.
+- **From anywhere** — Use <kbd>Shift</kbd><kbd>Shift</kbd> (Search Everywhere) and type **"JStall Status"**, **"JStall Record"**,
+  **"JStall Flame"**, or **"Analyze JStall Recording"** to invoke actions and pick a JVM from the popup.
+- **On recording files** — Right-click a `.zip` recording in the Project view and choose
+  **Analyze JStall Recording** or **Extract JStall Recording**, or simply double-click to open it.
 
 ## Installation
 
@@ -58,9 +85,20 @@ or **"Analyze JStall Recording"** to quickly invoke actions from anywhere in the
   <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "jstall-intellij-plugin"</kbd> >
   <kbd>Install</kbd>
 
-- Manually:
+- From a release:
 
   Download the [latest release](https://github.com/parttimenerd/jstall-intellij-plugin/releases/latest) and install it manually using
+  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
+
+- Build from source:
+
+  ```bash
+  git clone https://github.com/parttimenerd/jstall-intellij-plugin.git
+  cd jstall-intellij-plugin
+  ./gradlew buildPlugin
+  ```
+
+  The plugin ZIP will be in `build/distributions/`. Install it via
   <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
 
 ## Support, Feedback, Contributing
