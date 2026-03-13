@@ -2,6 +2,6 @@
 
 # jstall-intellij-plugin Changelog
 
-## [Unreleased]
+## [0.1.0] - 2026-13-03
 ### Added
 - Initial implementation
