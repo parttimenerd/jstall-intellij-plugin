@@ -18,6 +18,14 @@ class JStallSettings : PersistentStateComponent<JStallSettings.State> {
         var fullDiagnostics: Boolean = false,
         /** Flame graph profiling duration in seconds */
         var flameDurationSeconds: Int = 10,
+        /** Use intelligent stack trace filtering (--intelligent-filter) */
+        var intelligentFilter: Boolean = false,
+        /** Persist dumps to disk (--keep) */
+        var keep: Boolean = false,
+        /** Ignore threads without stack traces, typically native/system threads (--no-native) */
+        var noNative: Boolean = false,
+        /** Number of top threads to display (--top, default: 3) */
+        var top: Int = 3,
     )
 
     private var myState = State()

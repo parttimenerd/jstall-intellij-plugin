@@ -76,6 +76,19 @@ abstract class AbstractJvmAction : DumbAwareAction() {
         }
     }
 
+    /**
+     * CLI args specific to `jstall status`: --intelligent-filter, --no-native, --keep, --top.
+     */
+    protected fun statusArgs(): List<String> {
+        val state = JStallSettings.getInstance().state.copy()
+        return buildList {
+            if (state.intelligentFilter) add("--intelligent-filter")
+            if (state.noNative) add("--no-native")
+            if (state.keep) add("--keep")
+            if (state.top != 3) { add("--top"); add(state.top.toString()) }
+        }
+    }
+
     /** Title shown in the JVM picker popup. */
     protected abstract val pickerTitle: String
 

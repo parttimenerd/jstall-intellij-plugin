@@ -62,5 +62,13 @@
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
             <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
         </action>
+        <action id="JStall.RecordingFlame"
+                class="me.bechberger.jstall.actions.JStallRecordingFlameAction"
+                text="Show JStall Flamegraph"
+                description="Display the flamegraph embedded in a jstall recording"
+                icon="/icons/jstallFlame.svg">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

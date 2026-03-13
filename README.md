@@ -1,9 +1,9 @@
-# jstall-intellij-plugin
+# JStall IntelliJ Plugin
 
 ![Build](https://github.com/parttimenerd/jstall-intellij-plugin/workflows/Build/badge.svg)
 
 <!-- Plugin description -->
-A tiny plugin to integrate the [jstall](https://github.com/parttimenerd/jstall) CLI tool into JetBrains IDEs,
+A tiny plugin to integrate the [jstall](https://github.com/parttimenerd/jstall) CLI tool into [IntelliJ](https://www.jetbrains.com/idea/),
 giving you JVM diagnostics (thread analysis, deadlock detection, flame graphs, …) directly in your IDE,
 instead of just basic thread dumps.
 
@@ -59,16 +59,21 @@ JStall recording `.zip` files get a **custom file icon** in the project view and
 
 - **Double-click** to automatically run `jstall status` on the recording and display the results in an editor tab.
 - **Right-click → Analyze JStall Recording** — Same analysis via the context menu.
+- **Right-click → Show JStall Flamegraph** — Open the embedded flamegraph in the interactive viewer (only shown when the recording contains a flamegraph).
 - **Right-click → Extract JStall Recording** — Extract the recording ZIP contents into a folder.
 
 ## Settings
 Configurable under **Settings → Tools → JStall**:
 
-| Setting                     | Description                         | Default |
-|-----------------------------|-------------------------------------|---------|
-| Full diagnostics (`--full`) | Include expensive analyses          | Off     |
-| Sample interval             | Seconds between thread dump samples | 5       |
-| Sample count                | Number of samples to collect        | 2       |
+| Setting                               | Description                                                           | Default |
+|---------------------------------------|-----------------------------------------------------------------------|---------|
+| Full diagnostics (`--full`)           | Include expensive analyses                                            | Off     |
+| Intelligent filter                    | Collapse internal frames and focus on application code                | Off     |
+| Ignore native threads (`--no-native`) | Skip threads without stack traces (typically native/system threads)   | Off     |
+| Persist dumps (`--keep`)              | Persist dumps to disk                                                 | Off     |
+| Top threads                           | Number of top threads to display                                      | 3       |
+| Sample interval                       | Seconds between thread dump samples                                   | 5       |
+| Flame duration                        | Profiling duration in seconds                                         | 10      |
 
 ## Usage
 
@@ -76,7 +81,7 @@ Configurable under **Settings → Tools → JStall**:
 - **From anywhere** — Use <kbd>Shift</kbd><kbd>Shift</kbd> (Search Everywhere) and type **"JStall Status"**, **"JStall Record"**,
   **"JStall Flame"**, or **"Analyze JStall Recording"** to invoke actions and pick a JVM from the popup.
 - **On recording files** — Right-click a `.zip` recording in the Project view and choose
-  **Analyze JStall Recording** or **Extract JStall Recording**, or simply double-click to open it.
+  **Analyze JStall Recording**, **Show JStall Flamegraph** (if present), or **Extract JStall Recording**, or simply double-click to open it.
 
 ## Installation
 

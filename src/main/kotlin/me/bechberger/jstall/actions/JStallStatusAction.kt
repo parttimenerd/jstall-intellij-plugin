@@ -18,6 +18,7 @@ class JStallStatusAction : AbstractJvmAction() {
         return ActionArgs(buildList {
             add("status"); add(pid.toString())
             addAll(commonArgs())
+            addAll(statusArgs())
         })
     }
 }
