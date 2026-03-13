@@ -20,10 +20,10 @@ Simple, yet power powerful.
 <!-- Plugin description end -->
 
 ## Run Toolbar Actions
+
 Available in the **Run** tool window toolbar (next to Stop, Rerun, …):
 
-<!-- TODO: screenshot of run toolbar with JStall buttons -->
-> 📸 *Screenshot: run toolbar buttons — coming soon*
+![Toolbar actions](./img/toolbar.png)
 
 - **JStall Status** — Analyze a running JVM with `jstall status` and view the output in a console tab.
   Automatically uses the PID of the process in the current run window.
@@ -32,30 +32,24 @@ Available in the **Run** tool window toolbar (next to Stop, Rerun, …):
 - **JStall Flame** — Generate a CPU [flamegraph](https://www.brendangregg.com/flamegraphs.html) for a running JVM
   and display it in an interactive HTML viewer inside the IDE (not supported on Windows).
 
-All actions fall back to a **JVM picker popup** when invoked outside a run window
+All actions fall back to a **JVM selector popup** when invoked outside a run window
 (e.g. via <kbd>Shift</kbd><kbd>Shift</kbd> → "JStall Status" / "JStall Record" / "JStall Flame").
 
-<!-- TODO: screenshot of JVM picker popup -->
-> 📸 *Screenshot: JVM picker popup — coming soon*
+![JVM Selector Popup](./img/jvm-selector.png)
 
 ## Flamegraph Viewer
+
 The **JStall Flame** action opens an embedded browser in a dedicated **JStall Flamegraph** tool window.
 Each flamegraph gets its own tab.
 
-<!-- TODO: screenshot of flamegraph viewer tool window -->
-> 📸 *Screenshot: flamegraph viewer — coming soon*
+![Flamegraph viewer](./img/flame.png)
 
 - **Save Flamegraph** — Use the ⚙️ gear menu (the dropdown next to the tool window name) to save the currently
   selected flamegraph as a standalone HTML file.
 
-<!-- TODO: screenshot of gear menu with "Save Flamegraph…" option -->
-> 📸 *Screenshot: gear menu with Save Flamegraph — coming soon*
-
 ## Recording File Support
-JStall recording `.zip` files get a **custom file icon** in the project view and support:
 
-<!-- TODO: screenshot of recording file with custom icon in project view -->
-> 📸 *Screenshot: recording file icon — coming soon*
+JStall recording `.zip` files get a **custom file icon** in the project view and support:
 
 - **Double-click** to automatically run `jstall status` on the recording and display the results in an editor tab.
 - **Right-click → Analyze JStall Recording** — Same analysis via the context menu.
@@ -63,6 +57,7 @@ JStall recording `.zip` files get a **custom file icon** in the project view and
 - **Right-click → Extract JStall Recording** — Extract the recording ZIP contents into a folder.
 
 ## Settings
+
 Configurable under **Settings → Tools → JStall**:
 
 | Setting                               | Description                                                           | Default |
@@ -79,7 +74,7 @@ Configurable under **Settings → Tools → JStall**:
 
 - **From a Run window** — Click the JStall buttons in the Run tool window toolbar to target the running process directly.
 - **From anywhere** — Use <kbd>Shift</kbd><kbd>Shift</kbd> (Search Everywhere) and type **"JStall Status"**, **"JStall Record"**,
-  **"JStall Flame"**, or **"Analyze JStall Recording"** to invoke actions and pick a JVM from the popup.
+  **"JStall Flame"**, or **"Analyze JStall Recording"** to invoke actions and select a JVM from the popup.
 - **On recording files** — Right-click a `.zip` recording in the Project view and choose
   **Analyze JStall Recording**, **Show JStall Flamegraph** (if present), or **Extract JStall Recording**, or simply double-click to open it.
 
