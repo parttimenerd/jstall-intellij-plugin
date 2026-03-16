@@ -19,6 +19,8 @@ The plugin supports:
 
 Simple, yet power powerful.
 
+_You can also check out the [VSCode extension](https://marketplace.visualstudio.com/items?itemName=bechberger.jstall)._
+
 <!-- Plugin description end -->
 
 ## Run Toolbar Actions
@@ -38,6 +40,13 @@ All actions fall back to a **JVM selector popup** when invoked outside a run win
 (e.g. via <kbd>Shift</kbd><kbd>Shift</kbd> → "JStall Status" / "JStall Record" / "JStall Flame").
 
 ![JVM Selector Popup](./img/jvm-selector.png)
+
+## Running JStall Status
+
+The **JStall Status** action runs `jstall status` on the target JVM and displays the output in a console tab.
+The output includes thread states, deadlock detection, and other diagnostics to help identify issues.
+
+![Status output](./img/status.png)
 
 ## Flamegraph Viewer
 
