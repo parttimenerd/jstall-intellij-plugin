@@ -51,7 +51,7 @@ dependencies {
     }
 
     implementation("me.bechberger:jstall:0.5.3")
-    implementation("me.bechberger.util:femtocli:0.3.2")
+    implementation("me.bechberger.util:femtocli:0.3.4")
 }
 
 // Configure IntelliJ Platform Gradle Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
