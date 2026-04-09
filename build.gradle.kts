@@ -50,8 +50,8 @@ dependencies {
         testFramework(TestFrameworkType.Platform)
     }
 
-    implementation("me.bechberger:jstall:0.5.4")
-    implementation("me.bechberger.util:femtocli:0.3.6")
+    implementation("me.bechberger:jstall:0.6.0")
+    implementation("me.bechberger.util:femtocli:0.3.8")
 }
 
 // Configure IntelliJ Platform Gradle Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
