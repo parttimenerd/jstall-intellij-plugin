@@ -19,6 +19,7 @@ import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.text.DateFormatUtil
 import me.bechberger.femtocli.RunResult
 import me.bechberger.jstall.settings.JStallSettings
+import me.bechberger.jstall.util.CommandExecutor
 import me.bechberger.jstall.util.JVMDiscovery
 import java.nio.file.Path
 import java.time.LocalDateTime
@@ -168,7 +169,7 @@ abstract class AbstractJvmAction : DumbAwareAction() {
     private fun showJvmPicker(project: Project) {
         AppExecutorUtil.getAppExecutorService().execute {
             try {
-                val jvms = JVMDiscovery.listJVMs()
+                val jvms = JVMDiscovery(CommandExecutor.LocalCommandExecutor()).listJVMs()
                 if (jvms.isEmpty()) {
                     ApplicationManager.getApplication().invokeLater({
                         notifyError(project, "No running JVMs found")
