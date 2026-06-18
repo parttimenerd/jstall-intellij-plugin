@@ -1,4 +1,9 @@
-# JStall IntelliJ Plugin
+# JStall IntelliJ Plugin — Archived
+
+> **This repository has been archived.**
+> Development continues in the main [jstall](https://github.com/parttimenerd/jstall) repository
+> under [`ide-support/intellij-plugin/`](https://github.com/parttimenerd/jstall/tree/main/ide-support/intellij-plugin).
+> Please open issues and PRs there.
 
 ![Build](https://github.com/parttimenerd/jstall-intellij-plugin/workflows/Build/badge.svg)
 [![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/30667-jstall.svg)](https://plugins.jetbrains.com/plugin/30667-jstall)
