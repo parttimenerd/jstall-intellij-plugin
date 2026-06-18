@@ -51,7 +51,7 @@ dependencies {
         testFramework(TestFrameworkType.Platform)
     }
 
-    implementation("me.bechberger:jstall:0.6.1")
+    implementation("me.bechberger:jstall:0.7.1")
     implementation("me.bechberger.util:femtocli:0.4.0")
 }
 
